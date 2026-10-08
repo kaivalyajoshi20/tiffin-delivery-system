@@ -56,13 +56,17 @@ app.post("/api/login", async (req, res, next) => {
     const password = String(req.body?.password || "");
     if (!username || !password) return res.status(400).json({ error: "Invalid request", message: "Username and password are required." });
     const result = await pool.query(
-      "SELECT id, username, role, name FROM users WHERE username = $1 AND password_hash = crypt($2, password_hash) AND active = true LIMIT 1",
-      [username, password]
+      "SELECT id, username, password_hash, role, name FROM users WHERE username = $1 AND active = true LIMIT 1",
+      [username]
     );
-    if (!result.rows[0]) return res.status(401).json({ error: "Invalid credentials", message: "Staff ID or password is incorrect." });
+    const user = result.rows[0];
+    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      return res.status(401).json({ error: "Invalid credentials", message: "Staff ID or password is incorrect." });
+    }
     const token = crypto.randomUUID();
-    sessions.set(token, { id: result.rows[0].id, username: result.rows[0].username, role: result.rows[0].role, name: result.rows[0].name });
-    res.json({ token, user: result.rows[0] });
+    const safeUser = { id: user.id, username: user.username, role: user.role, name: user.name };
+    sessions.set(token, safeUser);
+    res.json({ token, user: safeUser });
   } catch (err) { next(err); }
 });
 
