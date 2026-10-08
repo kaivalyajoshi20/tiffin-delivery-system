@@ -109,9 +109,9 @@ CREATE INDEX IF NOT EXISTS idx_deliveries_date_driver ON deliveries(delivery_dat
 CREATE INDEX IF NOT EXISTS idx_recurring_active ON recurring_deliveries(active);
 CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
 `);
-  await pool.query(\`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT, ADD COLUMN IF NOT EXISTS on_duty BOOLEAN NOT NULL DEFAULT FALSE\`);
-  await pool.query(\`ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_number TEXT, ADD COLUMN IF NOT EXISTS address TEXT, ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS delivery_window_start TIME, ADD COLUMN IF NOT EXISTS delivery_window_end TIME, ADD COLUMN IF NOT EXISTS instructions TEXT\`);
-  await pool.query(\`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recurring_delivery_id UUID, ADD COLUMN IF NOT EXISTS route_order INTEGER, ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch', ADD COLUMN IF NOT EXISTS whatsapp_message_id TEXT\`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT, ADD COLUMN IF NOT EXISTS on_duty BOOLEAN NOT NULL DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_number TEXT, ADD COLUMN IF NOT EXISTS address TEXT, ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS delivery_window_start TIME, ADD COLUMN IF NOT EXISTS delivery_window_end TIME, ADD COLUMN IF NOT EXISTS instructions TEXT`);
+  await pool.query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recurring_delivery_id UUID, ADD COLUMN IF NOT EXISTS route_order INTEGER, ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch', ADD COLUMN IF NOT EXISTS whatsapp_message_id TEXT`);
   // V1 migration: allow more than one meal/delivery per customer on the same date.
   // Older demo databases may still have the original two-column unique constraint.
   await pool.query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch'`);
