@@ -14,4 +14,17 @@ function history(){return '<h1>Delivery History</h1><p class="muted">Proof, GPS 
 function driver(){return '<h1>Today\'s Route</h1><p class="muted">Rahul · 4 stops · optimized route demo</p><div class="card section"><h2>Route overview</h2><p class="muted">Map integration and automatic route optimization will connect here.</p><div class="actions"><button class="btn btn-primary" onclick="toast(\'Route planning requested\')">Optimize route</button><button class="btn btn-secondary" onclick="toast(\'Navigation handoff will open here\')">Open navigation</button></div></div><div class="section">'+table(demo.deliveries)+'</div>'}
 function renderPage(){const m=document.querySelector("#main");m.innerHTML=state.page==="dashboard"?dashboard():state.page==="customers"?customers():state.page==="drivers"?drivers():state.page==="deliveries"?deliveries():state.page==="history"?history():state.page==="driver"?driver():state.page==="profile"?'<h1>My Profile</h1><p class="muted">Password change and account settings will be secured in the backend.</p>':dashboard();document.querySelectorAll("[data-p]").forEach(b=>b.classList.toggle("active",b.dataset.p===state.page))}
 function render(){if(!state.logged)return login();shell()}
-window.planRoute=()=>toast("Demo route planned — real optimizer comes after backend approval");window.openDelivery=id=>toast("Opening "+id+" — proof details coming next");render();
+window.planRoute=()=>toast("Demo route planned — real optimizer comes after backend approval");
+window.openDelivery=id=>{
+ const d=demo.deliveries.find(x=>x.id===id);
+ const proof=d?.status==="Delivered"?"Delivery proof available • Photo + GPS + timestamp (demo)":d?.status==="Pending"?"Next step: Collect empty tiffin, then deliver":"Planned stop";
+ const modal=document.createElement("div");
+ modal.className="login";
+ modal.style.cssText="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:30";
+ modal.innerHTML='<div class="login-card"><div style="display:flex;justify-content:space-between;gap:12px"><div><div class="muted" style="font-size:12px">'+(d?.id||id)+'</div><h2 style="margin-top:4px">'+(d?.customer||"Delivery")+'</h2></div><button class="btn btn-secondary" id="closeModal">Close</button></div><div class="card" style="margin-top:18px;background:#f8fafc"><b>Delivery workflow</b><p class="muted">'+proof+'</p><div class="actions"><button class="btn btn-secondary" id="emptyBtn">Collect Empty Tiffin</button><button class="btn btn-primary" id="deliverBtn">Deliver Tiffin</button></div></div></div>';
+ document.body.append(modal);
+ modal.querySelector("#closeModal").onclick=()=>modal.remove();
+ modal.querySelector("#emptyBtn").onclick=()=>toast("Demo: empty tiffin photo + GPS captured");
+ modal.querySelector("#deliverBtn").onclick=()=>{if(d){d.status="Delivered";d.time="Just now";}modal.remove();renderPage();toast("Demo delivery completed")};
+};
+render();
