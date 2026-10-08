@@ -107,7 +107,7 @@ CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
   const hash=await bcrypt.hash("demo123",10);if(process.env.DEMO_SEED==="true"){await pool.query("INSERT INTO users(username,password_hash,role,name) VALUES('admin',$1,'admin','Admin') ON CONFLICT(username) DO NOTHING",[hash]);await pool.query("INSERT INTO users(username,password_hash,role,name) VALUES('driver',$1,'driver','Rahul') ON CONFLICT(username) DO NOTHING",[hash]);}}
 function dayNumber(d){return ((d.getUTCDay()+6)%7)+1}
 async function generateDailyDeliveries(date=new Date().toISOString().slice(0,10)){if(!pool)return{created:0};const result=await pool.query(`INSERT INTO deliveries(delivery_code,customer_id,driver_id,recurring_delivery_id,delivery_date,planned_time,meal_type,status)
-SELECT 'DEL-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,8)),r.customer_id,r.driver_id,r.id,$1,r.delivery_time,r.meal_type,'Pending'
+SELECT 'DEL-'||upper(substr(md5(r.id::text||':'||$1),1,8)),r.customer_id,r.driver_id,r.id,$1,r.delivery_time,r.meal_type,'Pending'
 FROM recurring_deliveries r JOIN customers c ON c.id=r.customer_id
 WHERE r.active AND c.active AND ($1::date >= COALESCE(r.paused_until,'1900-01-01')) AND extract(isodow from $1::date)::int=ANY(r.days_of_week)
 AND NOT EXISTS(SELECT 1 FROM deliveries d WHERE d.customer_id=r.customer_id AND d.delivery_date=$1 AND d.meal_type=r.meal_type)
