@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Sitemap: https://tiffin-delivery-demo.onrender.com/sitemap.xml
