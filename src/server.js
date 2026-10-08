@@ -80,11 +80,12 @@ CREATE TABLE IF NOT EXISTS deliveries (
   delivery_latitude DOUBLE PRECISION,
   delivery_longitude DOUBLE PRECISION,
   delivered_at TIMESTAMPTZ,
+  meal_type TEXT NOT NULL DEFAULT 'Lunch',
   whatsapp_status TEXT,
   whatsapp_message_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(customer_id, delivery_date)
+  UNIQUE(customer_id, delivery_date, meal_type)
 );
 CREATE TABLE IF NOT EXISTS leaves (
   id BIGSERIAL PRIMARY KEY,
@@ -97,14 +98,20 @@ CREATE TABLE IF NOT EXISTS leaves (
 CREATE INDEX IF NOT EXISTS idx_deliveries_date_driver ON deliveries(delivery_date, driver_id);
 CREATE INDEX IF NOT EXISTS idx_recurring_active ON recurring_deliveries(active);
 CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
-`);const hash=await bcrypt.hash("demo123",10);if(process.env.DEMO_SEED==="true"){await pool.query("INSERT INTO users(username,password_hash,role,name) VALUES('admin',$1,'admin','Admin') ON CONFLICT(username) DO NOTHING",[hash]);await pool.query("INSERT INTO users(username,password_hash,role,name) VALUES('driver',$1,'driver','Rahul') ON CONFLICT(username) DO NOTHING",[hash]);}}
+`);
+  // V1 migration: allow more than one meal/delivery per customer on the same date.
+  // Older demo databases may still have the original two-column unique constraint.
+  await pool.query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch'`);
+  await pool.query(`ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_customer_id_delivery_date_key`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS deliveries_customer_date_meal_key ON deliveries(customer_id, delivery_date, meal_type)`);
+  const hash=await bcrypt.hash("demo123",10);if(process.env.DEMO_SEED==="true"){await pool.query("INSERT INTO users(username,password_hash,role,name) VALUES('admin',$1,'admin','Admin') ON CONFLICT(username) DO NOTHING",[hash]);await pool.query("INSERT INTO users(username,password_hash,role,name) VALUES('driver',$1,'driver','Rahul') ON CONFLICT(username) DO NOTHING",[hash]);}}
 function dayNumber(d){return ((d.getUTCDay()+6)%7)+1}
-async function generateDailyDeliveries(date=new Date().toISOString().slice(0,10)){if(!pool)return{created:0};const result=await pool.query(`INSERT INTO deliveries(delivery_code,customer_id,driver_id,recurring_delivery_id,delivery_date,planned_time,status)
-SELECT 'DEL-'||to_char(nextval('deliveries_id_seq'),'FM000000'),r.customer_id,r.driver_id,r.id,$1,r.delivery_time,'Pending'
-FROM recurring_deliveries r JOIN customers c ON c.id=r.customer_id LEFT JOIN users u ON u.id=r.driver_id
+async function generateDailyDeliveries(date=new Date().toISOString().slice(0,10)){if(!pool)return{created:0};const result=await pool.query(`INSERT INTO deliveries(delivery_code,customer_id,driver_id,recurring_delivery_id,delivery_date,planned_time,meal_type,status)
+SELECT 'DEL-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,8)),r.customer_id,r.driver_id,r.id,$1,r.delivery_time,r.meal_type,'Pending'
+FROM recurring_deliveries r JOIN customers c ON c.id=r.customer_id
 WHERE r.active AND c.active AND ($1::date >= COALESCE(r.paused_until,'1900-01-01')) AND extract(isodow from $1::date)::int=ANY(r.days_of_week)
-AND NOT EXISTS(SELECT 1 FROM deliveries d WHERE d.customer_id=r.customer_id AND d.delivery_date=$1)
-ON CONFLICT(customer_id,delivery_date) DO NOTHING RETURNING id`,[date]);return{created:result.rowCount}}
+AND NOT EXISTS(SELECT 1 FROM deliveries d WHERE d.customer_id=r.customer_id AND d.delivery_date=$1 AND d.meal_type=r.meal_type)
+ON CONFLICT(customer_id,delivery_date,meal_type) DO NOTHING RETURNING id`,[date]);return{created:result.rowCount}}
 app.post("/api/login",async(req,res,next)=>{try{if(!pool)return res.status(503).json({error:"Database unavailable"});const username=String(req.body?.username||"").trim().toLowerCase(),password=String(req.body?.password||"");const q=await pool.query("SELECT id,username,password_hash,role,name FROM users WHERE username=$1 AND active=true LIMIT 1",[username]);const u=q.rows[0];if(!u||!(await bcrypt.compare(password,u.password_hash)))return res.status(401).json({error:"Invalid credentials",message:"Staff ID or password is incorrect."});const safe={id:u.id,username:u.username,role:u.role,name:u.name};res.json({token:createSessionToken(safe),user:safe})}catch(e){next(e)}});
 app.post("/api/profile/password",requireAuth,async(req,res,next)=>{try{const current=String(req.body?.currentPassword||""),nextPw=String(req.body?.newPassword||"");if(nextPw.length<8)return res.status(400).json({error:"Invalid password",message:"New password must be at least 8 characters."});const q=await pool.query("SELECT password_hash FROM users WHERE id=$1 AND active=true",[req.user.id]);if(!q.rows[0]||!(await bcrypt.compare(current,q.rows[0].password_hash)))return res.status(401).json({error:"Invalid credentials",message:"Current password is incorrect."});await pool.query("UPDATE users SET password_hash=$1,updated_at=NOW() WHERE id=$2",[await bcrypt.hash(nextPw,12),req.user.id]);res.json({ok:true})}catch(e){next(e)}});
 app.post("/api/logout",requireAuth,(_req,res)=>res.json({ok:true}));
@@ -121,7 +128,22 @@ app.post("/api/recurring-deliveries",requireAuth,adminOnly,async(req,res,next)=>
 app.patch("/api/recurring-deliveries/:id",requireAuth,adminOnly,async(req,res,next)=>{try{const b=req.body||{};const q=await pool.query("UPDATE recurring_deliveries SET driver_id=COALESCE($1,driver_id),delivery_time=COALESCE($2,delivery_time),days_of_week=COALESCE($3,days_of_week),active=COALESCE($4,active),paused_until=$5,notes=COALESCE($6,notes),updated_at=NOW() WHERE id=$7 RETURNING *",[b.driverId,b.deliveryTime,b.daysOfWeek,b.active,b.pausedUntil??null,b.notes,req.params.id]);if(!q.rows[0])return res.status(404).json({error:"Recurring delivery not found"});res.json({delivery:q.rows[0]})}catch(e){next(e)}});
 app.delete("/api/recurring-deliveries/:id",requireAuth,adminOnly,async(req,res,next)=>{try{await pool.query("UPDATE recurring_deliveries SET active=false,updated_at=NOW() WHERE id=$1",[req.params.id]);res.json({ok:true})}catch(e){next(e)}});
 app.post("/api/deliveries/generate",requireAuth,adminOnly,async(req,res,next)=>{try{res.json(await generateDailyDeliveries(req.body?.date||new Date().toISOString().slice(0,10)))}catch(e){next(e)}});
-app.get("/api/deliveries",requireAuth,async(req,res,next)=>{try{const date=req.query.date||new Date().toISOString().slice(0,10);await generateDailyDeliveries(date);const params=[date];let where="d.delivery_date=$1";if(req.user.role==="driver"){params.push(req.user.id);where+=" AND d.driver_id=$2"}const q=await pool.query(`SELECT d.id,d.delivery_code code,d.delivery_date,c.id customer_id,c.name customer,c.phone,c.whatsapp_number,c.address,c.area,c.latitude,c.longitude,u.id driver_id,u.name driver,d.status,d.route_order,COALESCE(TO_CHAR(d.planned_time,'HH12:MI AM'),'') time,d.empty_photo_data IS NOT NULL has_empty_photo,d.delivery_photo_data IS NOT NULL has_delivery_photo,d.whatsapp_status FROM deliveries d JOIN customers c ON c.id=d.customer_id LEFT JOIN users u ON u.id=d.driver_id WHERE ${where} ORDER BY d.route_order NULLS LAST,d.planned_time NULLS LAST,c.name`,params);res.json({deliveries:q.rows})}catch(e){next(e)}});
+app.post("/api/deliveries",requireAuth,adminOnly,async(req,res,next)=>{try{
+  const b=req.body||{};
+  if(!b.customerId||!b.deliveryDate)return res.status(400).json({error:"Customer and delivery date are required"});
+  const mealType=String(b.mealType||"Lunch").trim()||"Lunch";
+  const code="DEL-"+crypto.randomUUID().replace(/-/g,"").slice(0,8).toUpperCase();
+  const q=await pool.query(`INSERT INTO deliveries(delivery_code,customer_id,driver_id,delivery_date,planned_time,meal_type,status)
+    VALUES($1,$2,$3,$4,$5,$6,'Pending') RETURNING *`,
+    [code,b.customerId,b.driverId||null,b.deliveryDate,b.plannedTime||null,mealType]);
+  res.status(201).json({delivery:q.rows[0]});
+}catch(e){next(e)}});
+app.delete("/api/deliveries/:id",requireAuth,adminOnly,async(req,res,next)=>{try{
+  const q=await pool.query("UPDATE deliveries SET status='Cancelled',updated_at=NOW() WHERE id=$1 AND status NOT IN ('Delivered','Cancelled') RETURNING id,delivery_code code,status",[req.params.id]);
+  if(!q.rows[0])return res.status(404).json({error:"Delivery not found or already completed."});
+  res.json({delivery:q.rows[0]});
+}catch(e){next(e)}});
+app.get("/api/deliveries",requireAuth,async(req,res,next)=>{try{const date=req.query.date||new Date().toISOString().slice(0,10);await generateDailyDeliveries(date);const params=[date];let where="d.delivery_date=$1";if(req.user.role==="driver"){params.push(req.user.id);where+=" AND d.driver_id=$2"}const q=await pool.query(`SELECT d.id,d.delivery_code code,d.delivery_date,d.meal_type,c.id customer_id,c.name customer,c.phone,c.whatsapp_number,c.address,c.area,c.latitude,c.longitude,u.id driver_id,u.name driver,d.status,d.route_order,COALESCE(TO_CHAR(d.planned_time,'HH12:MI AM'),'') time,d.empty_photo_data IS NOT NULL has_empty_photo,d.delivery_photo_data IS NOT NULL has_delivery_photo,d.whatsapp_status FROM deliveries d JOIN customers c ON c.id=d.customer_id LEFT JOIN users u ON u.id=d.driver_id WHERE ${where} ORDER BY d.route_order NULLS LAST,d.planned_time NULLS LAST,c.name`,params);res.json({deliveries:q.rows})}catch(e){next(e)}});
 app.post("/api/deliveries/:code/empty-proof",requireAuth,async(req,res,next)=>{try{if(req.user.role!=="driver")return res.status(403).json({error:"Forbidden"});const b=req.body||{};if(!b.photo)return res.status(400).json({error:"Photo required"});const q=await pool.query("UPDATE deliveries SET status='Empty Tiffin Collected',empty_photo_data=$1,empty_photo_at=NOW(),empty_latitude=$2,empty_longitude=$3,updated_at=NOW() WHERE delivery_code=$4 AND driver_id=$5 AND status IN ('Pending','Planned','Empty Tiffin Collected') RETURNING delivery_code code,status",[b.photo,b.latitude??null,b.longitude??null,req.params.code,req.user.id]);if(!q.rows[0])return res.status(404).json({error:"Delivery not found"});res.json({delivery:q.rows[0]})}catch(e){next(e)}});
 app.post("/api/deliveries/:code/complete",requireAuth,async(req,res,next)=>{try{if(req.user.role!=="driver")return res.status(403).json({error:"Forbidden"});const b=req.body||{};if(!b.photo)return res.status(400).json({error:"Photo required"});const q=await pool.query("UPDATE deliveries SET status='Delivered',delivery_photo_data=$1,delivery_photo_at=NOW(),delivered_at=NOW(),delivery_latitude=$2,delivery_longitude=$3,whatsapp_status='Queued',updated_at=NOW() WHERE delivery_code=$4 AND driver_id=$5 AND empty_photo_data IS NOT NULL AND status IN ('Empty Tiffin Collected','Pending') RETURNING delivery_code code,status,delivered_at,customer_id",[b.photo,b.latitude??null,b.longitude??null,req.params.code,req.user.id]);if(!q.rows[0])return res.status(409).json({error:"Collect the empty-tiffin photo before completing delivery."});/* WhatsApp provider call will be attached once the client supplies provider credentials. */res.json({delivery:q.rows[0],whatsapp:"Queued"})}catch(e){next(e)}});
 app.get("/api/deliveries/:code/proof",requireAuth,async(req,res,next)=>{try{const q=await pool.query("SELECT d.delivery_code code,c.name customer,u.name driver,d.status,d.empty_photo_data,d.empty_photo_at,d.empty_latitude,d.empty_longitude,d.delivery_photo_data,d.delivery_photo_at,d.delivery_latitude,d.delivery_longitude,d.delivered_at,d.whatsapp_status FROM deliveries d JOIN customers c ON c.id=d.customer_id LEFT JOIN users u ON u.id=d.driver_id WHERE d.delivery_code=$1 AND ($2='admin' OR d.driver_id=$3)",[req.params.code,req.user.role,req.user.id]);if(!q.rows[0])return res.status(404).json({error:"Proof not found"});res.json({proof:q.rows[0]})}catch(e){next(e)}});
