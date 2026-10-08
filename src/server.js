@@ -20,7 +20,7 @@ function requireAuth(req,res,next){const s=readSessionToken(req.headers.authoriz
 function adminOnly(req,res,next){if(req.user?.role!=="admin")return res.status(403).json({error:"Forbidden",message:"Admin access required."});next()}
 async function migrate(){if(!pool)return;await pool.query(`-- Production V1 database schema
 CREATE TABLE IF NOT EXISTS users (
-  id BIGSERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('admin','driver')),
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS customers (
-  id BIGSERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_code TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   phone TEXT,
@@ -49,9 +49,9 @@ CREATE TABLE IF NOT EXISTS customers (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS recurring_deliveries (
-  id BIGSERIAL PRIMARY KEY,
-  customer_id BIGINT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-  driver_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  driver_id UUID REFERENCES users(id) ON DELETE SET NULL,
   meal_type TEXT NOT NULL DEFAULT 'Lunch',
   delivery_time TIME,
   days_of_week SMALLINT[] NOT NULL DEFAULT ARRAY[1,2,3,4,5,6],
@@ -62,11 +62,11 @@ CREATE TABLE IF NOT EXISTS recurring_deliveries (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS deliveries (
-  id BIGSERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   delivery_code TEXT UNIQUE NOT NULL,
-  customer_id BIGINT NOT NULL REFERENCES customers(id),
-  driver_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
-  recurring_delivery_id BIGINT REFERENCES recurring_deliveries(id) ON DELETE SET NULL,
+  customer_id UUID NOT NULL REFERENCES customers(id),
+  driver_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  recurring_delivery_id UUID REFERENCES recurring_deliveries(id) ON DELETE SET NULL,
   delivery_date DATE NOT NULL,
   planned_time TIME,
   route_order INTEGER,
@@ -88,8 +88,8 @@ CREATE TABLE IF NOT EXISTS deliveries (
   UNIQUE(customer_id, delivery_date, meal_type)
 );
 CREATE TABLE IF NOT EXISTS leaves (
-  id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   leave_date DATE NOT NULL,
   reason TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -99,6 +99,9 @@ CREATE INDEX IF NOT EXISTS idx_deliveries_date_driver ON deliveries(delivery_dat
 CREATE INDEX IF NOT EXISTS idx_recurring_active ON recurring_deliveries(active);
 CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
 `);
+  await pool.query(\`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone TEXT, ADD COLUMN IF NOT EXISTS on_duty BOOLEAN NOT NULL DEFAULT FALSE\`);
+  await pool.query(\`ALTER TABLE customers ADD COLUMN IF NOT EXISTS whatsapp_number TEXT, ADD COLUMN IF NOT EXISTS address TEXT, ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS delivery_window_start TIME, ADD COLUMN IF NOT EXISTS delivery_window_end TIME, ADD COLUMN IF NOT EXISTS instructions TEXT\`);
+  await pool.query(\`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recurring_delivery_id UUID, ADD COLUMN IF NOT EXISTS route_order INTEGER, ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch', ADD COLUMN IF NOT EXISTS whatsapp_message_id TEXT\`);
   // V1 migration: allow more than one meal/delivery per customer on the same date.
   // Older demo databases may still have the original two-column unique constraint.
   await pool.query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch'`);
