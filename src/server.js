@@ -88,7 +88,7 @@ async function seedDemoUsers() {
 
 
 function requireAuth(req, res, next) {
-  const token = req.headers.authorization?.replace(/^Bearer\\s+/i, "");
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, "");
   const session = readSessionToken(token);
   if (!session) return res.status(401).json({ error: "Unauthorized", message: "Please sign in again." });
   req.user = session;
