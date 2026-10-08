@@ -14,6 +14,20 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
+
+    flavorDimensions += "role"
+    productFlavors {
+        admin {
+            dimension "role"
+            applicationIdSuffix ".admin"
+            versionNameSuffix "-admin"
+        }
+        driver {
+            dimension "role"
+            applicationIdSuffix ".driver"
+            versionNameSuffix "-driver"
+        }
+    }
 }
 
 dependencies {
