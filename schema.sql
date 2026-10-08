@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS deliveries (
   recurring_delivery_id BIGINT REFERENCES recurring_deliveries(id) ON DELETE SET NULL,
   delivery_date DATE NOT NULL,
   planned_time TIME,
+  meal_type TEXT NOT NULL DEFAULT 'Lunch',
   route_order INTEGER,
   status TEXT NOT NULL DEFAULT 'Pending',
   empty_photo_data TEXT,
@@ -64,7 +65,7 @@ CREATE TABLE IF NOT EXISTS deliveries (
   whatsapp_message_id TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(customer_id, delivery_date)
+  UNIQUE(customer_id, delivery_date, meal_type)
 );
 CREATE TABLE IF NOT EXISTS leaves (
   id BIGSERIAL PRIMARY KEY,
