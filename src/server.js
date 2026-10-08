@@ -18,6 +18,24 @@ app.use((_req, res, next) => {
   next();
 });
 
+const ALLOWED_ORIGINS = new Set([
+  "https://instant-wjihasssodpr-angadphuket345-140e.wix-site-host.com",
+  "http://localhost:3000",
+  "http://localhost:5173"
+]);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  }
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
+
 app.use(express.json({ limit: "1mb" }));
 app.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
 app.use(express.static("public"));
@@ -94,6 +112,35 @@ app.post("/api/login", async (req, res, next) => {
     const safeUser = { id: user.id, username: user.username, role: user.role, name: user.name };
     const token = createSessionToken(safeUser);
     res.json({ token, user: safeUser });
+  } catch (err) { next(err); }
+});
+
+app.post("/api/profile/password", requireAuth, async (req, res, next) => {
+  try {
+    const currentPassword = String(req.body?.currentPassword || "");
+    const newPassword = String(req.body?.newPassword || "");
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Invalid request", message: "Current and new password are required." });
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "Invalid password", message: "New password must be at least 8 characters." });
+    }
+
+    const result = await pool.query(
+      "SELECT password_hash FROM users WHERE id = $1 AND active = true LIMIT 1",
+      [req.user.id]
+    );
+    const user = result.rows[0];
+    if (!user || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+      return res.status(401).json({ error: "Invalid credentials", message: "Current password is incorrect." });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await pool.query(
+      "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
+      [passwordHash, req.user.id]
+    );
+    res.json({ ok: true, message: "Password updated." });
   } catch (err) { next(err); }
 });
 
