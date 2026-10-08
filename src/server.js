@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import pg from "pg";
 import crypto from "node:crypto";
+import bcrypt from "bcryptjs";
 
 const { Pool } = pg;
 const app = express();
@@ -29,6 +30,16 @@ const pool = process.env.DATABASE_URL
   : null;
 
 const sessions = new Map();
+
+async function seedDemoUsers() {
+  if (!pool || process.env.DEMO_SEED !== "true") return;
+  const hash = await bcrypt.hash("demo123", 10);
+  await pool.query(
+    "UPDATE users SET password_hash = $1, updated_at = NOW() WHERE username IN ('admin','driver')",
+    [hash]
+  );
+}
+
 
 function requireAuth(req, res, next) {
   const token = req.headers.authorization?.replace(/^Bearer\\s+/i, "");
@@ -161,6 +172,20 @@ app.use((err, _req, res, _next) => {
   });
 });
 
-app.listen(port, () => {
+async function start() {
+  try {
+    await seedDemoUsers();
+    app.listen(port, () => {
+      console.log(`Tiffin Delivery System running on port ${port}`);
+    });
+  } catch (err) {
+    console.error("Startup failed:", err);
+    process.exit(1);
+  }
+}
+
+start();
+
+/* app.listen(port, () => {
   console.log(`Tiffin Delivery System running on port ${port}`);
-});
+}); */
