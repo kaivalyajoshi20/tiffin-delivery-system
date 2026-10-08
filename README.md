@@ -1,18 +1,25 @@
-# Tiffin Delivery System
+# Tiffin Delivery System — Production V1
 
-Staff-only tiffin delivery management system. Demo UI is being built first, then connected to PostgreSQL/Neon and production services.
+Staff-only tiffin delivery management system.
 
-## Current stack
-- Node.js + Express
-- PostgreSQL / Neon
-- Responsive HTML/CSS/JavaScript
+## V1 backend
+- Node.js + Express + PostgreSQL/Neon
+- Staff authentication and roles
+- Customers and scalable customer records
+- Recurring deliveries and automatic daily generation
+- Multiple delivery boys and duty status
+- Empty-tiffin and delivered-tiffin proof photos with GPS
+- Delivery workflow enforcement
+- Coordinate-based automatic route optimization foundation
+- Leaves
+- WhatsApp notification trigger/status foundation
+- Maps-ready customer coordinates and route data
 
-## Run locally
-```bash
+## Required production configuration
+Set DATABASE_URL and a strong SESSION_SECRET. Add Google Maps and WhatsApp provider credentials only after the client supplies the relevant accounts/access.
+
+## Local run
 npm install
 npm start
-```
-Then open http://localhost:3000.
 
-## Demo
-The current demo includes admin login, dashboard, customers, delivery boys, today's deliveries, history placeholder, and delivery-boy route view. Authentication and persistent data will be connected to PostgreSQL next.
+Open http://localhost:3000.
