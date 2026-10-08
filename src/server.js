@@ -29,7 +29,35 @@ const pool = process.env.DATABASE_URL
     })
   : null;
 
-const sessions = new Map();
+const SESSION_SECRET = process.env.SESSION_SECRET || "tiffinflow-demo-session-secret-change-before-production";
+
+function createSessionToken(user) {
+  const payload = Buffer.from(JSON.stringify({
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    name: user.name,
+    exp: Date.now() + 12 * 60 * 60 * 1000
+  })).toString("base64url");
+  const signature = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+  return payload + "." + signature;
+}
+
+function readSessionToken(token) {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [payload, signature] = parts;
+  const expected = crypto.createHmac("sha256", SESSION_SECRET).update(payload).digest("base64url");
+  if (signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+  try {
+    const session = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!session.exp || session.exp < Date.now()) return null;
+    return { id: session.id, username: session.username, role: session.role, name: session.name };
+  } catch {
+    return null;
+  }
+}
 
 async function seedDemoUsers() {
   if (!pool || process.env.DEMO_SEED !== "true") return;
@@ -43,7 +71,7 @@ async function seedDemoUsers() {
 
 function requireAuth(req, res, next) {
   const token = req.headers.authorization?.replace(/^Bearer\\s+/i, "");
-  const session = token ? sessions.get(token) : null;
+  const session = readSessionToken(token);
   if (!session) return res.status(401).json({ error: "Unauthorized", message: "Please sign in again." });
   req.user = session;
   next();
@@ -63,16 +91,13 @@ app.post("/api/login", async (req, res, next) => {
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return res.status(401).json({ error: "Invalid credentials", message: "Staff ID or password is incorrect." });
     }
-    const token = crypto.randomUUID();
     const safeUser = { id: user.id, username: user.username, role: user.role, name: user.name };
-    sessions.set(token, safeUser);
+    const token = createSessionToken(safeUser);
     res.json({ token, user: safeUser });
   } catch (err) { next(err); }
 });
 
-app.post("/api/logout", requireAuth, (req, res) => {
-  const token = req.headers.authorization?.replace(/^Bearer\\s+/i, "");
-  sessions.delete(token);
+app.post("/api/logout", requireAuth, (_req, res) => {
   res.json({ ok: true });
 });
 
