@@ -97,6 +97,11 @@ CREATE TABLE IF NOT EXISTS deliveries (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(customer_id, delivery_date, meal_type)
 );
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 CREATE TABLE IF NOT EXISTS leaves (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
