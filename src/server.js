@@ -8,10 +8,20 @@ const { Pool } = pg;
 const app = express();
 const port = Number(process.env.PORT || 3000);
 app.disable("x-powered-by"); app.set("trust proxy", 1);
-app.use((_req,res,next)=>{res.setHeader("X-Content-Type-Options","nosniff");res.setHeader("X-Frame-Options","DENY");res.setHeader("Referrer-Policy","strict-origin-when-cross-origin");res.setHeader("Permissions-Policy","camera=(self), geolocation=(self), microphone=()");next()});
+if(process.env.NODE_ENV==="production" && !process.env.SESSION_SECRET) throw new Error("SESSION_SECRET is required in production");
+app.use((req,res,next)=>{
+  if(process.env.NODE_ENV==="production" && req.headers["x-forwarded-proto"]!=="https") return res.redirect(308,"https://"+req.get("host")+req.originalUrl);
+  res.setHeader("X-Content-Type-Options","nosniff");res.setHeader("X-Frame-Options","DENY");res.setHeader("Referrer-Policy","strict-origin-when-cross-origin");res.setHeader("Permissions-Policy","camera=(self), geolocation=(self), microphone=()");
+  if(process.env.NODE_ENV==="production") res.setHeader("Strict-Transport-Security","max-age=31536000; includeSubDomains");
+  next()
+});
+const rateBuckets=new Map();
+function rateLimit({windowMs=60000,max=120,keyPrefix="global"}={}){return(req,res,next)=>{const key=keyPrefix+":"+req.ip,now=Date.now(),b=rateBuckets.get(key);if(!b||now-b.started>windowMs){rateBuckets.set(key,{started:now,count:1});return next()}b.count++;if(b.count>max)return res.status(429).json({error:"Too many requests",message:"Please wait a moment and try again."});next()}}
+app.use(rateLimit({windowMs:60000,max:180,keyPrefix:"all"}));
 const ALLOWED_ORIGINS=new Set(["https://instant-wjihasssodpr-angadphuket345-140e.wix-site-host.com","http://localhost:3000","http://localhost:5173"]);
 app.use((req,res,next)=>{const origin=req.headers.origin;if(origin&&ALLOWED_ORIGINS.has(origin)){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Headers","Content-Type, Authorization");res.setHeader("Access-Control-Allow-Methods","GET,POST,PATCH,DELETE,OPTIONS")}if(req.method==="OPTIONS")return res.sendStatus(204);next()});
-app.use(express.json({limit:"12mb"}));app.use((_req,res,next)=>{res.setHeader("Cache-Control","no-store");next()});app.use(express.static("public"));
+app.use(express.json({limit:"12mb"}));
+app.use(express.static("public",{setHeaders:(res,path)=>{if(path.endsWith(".html"))res.setHeader("Cache-Control","no-cache");else res.setHeader("Cache-Control","public,max-age=86400")}}));
 const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}}):null;
 const SESSION_SECRET=process.env.SESSION_SECRET||"change-this-in-production";
 function createSessionToken(user){const payload=Buffer.from(JSON.stringify({...user,exp:Date.now()+12*60*60*1000})).toString("base64url");const sig=crypto.createHmac("sha256",SESSION_SECRET).update(payload).digest("base64url");return payload+"."+sig}
@@ -115,7 +125,8 @@ FROM recurring_deliveries r JOIN customers c ON c.id=r.customer_id
 WHERE r.active AND c.active AND ($1::date >= COALESCE(r.paused_until,'1900-01-01')) AND extract(isodow from $1::date)::int=ANY(r.days_of_week)
 AND NOT EXISTS(SELECT 1 FROM deliveries d WHERE d.customer_id=r.customer_id AND d.delivery_date=$1 AND d.meal_type=r.meal_type)
 ON CONFLICT(customer_id,delivery_date,meal_type) DO NOTHING RETURNING id`,[date]);return{created:result.rowCount}}
-app.post("/api/login",async(req,res,next)=>{try{if(!pool)return res.status(503).json({error:"Database unavailable"});const username=String(req.body?.username||"").trim().toLowerCase(),password=String(req.body?.password||"");const q=await pool.query("SELECT id,username,password_hash,role,name FROM users WHERE username=$1 AND active=true LIMIT 1",[username]);const u=q.rows[0];if(!u||!(await bcrypt.compare(password,u.password_hash)))return res.status(401).json({error:"Invalid credentials",message:"Staff ID or password is incorrect."});const safe={id:u.id,username:u.username,role:u.role,name:u.name};res.json({token:createSessionToken(safe),user:safe})}catch(e){next(e)}});
+app.get("/api/public-config",(_req,res)=>res.json({analyticsId:process.env.GA_MEASUREMENT_ID||""}));
+app.post("/api/login",rateLimit({windowMs:10*60*1000,max:12,keyPrefix:"login"}),async(req,res,next)=>{try{if(!pool)return res.status(503).json({error:"Database unavailable"});const username=String(req.body?.username||"").trim().toLowerCase(),password=String(req.body?.password||"");if(username.length<2||username.length>80||password.length<1||password.length>200)return res.status(400).json({error:"Invalid login",message:"Please enter a valid Staff ID and password."});const q=await pool.query("SELECT id,username,password_hash,role,name FROM users WHERE username=$1 AND active=true LIMIT 1",[username]);const u=q.rows[0];if(!u||!(await bcrypt.compare(password,u.password_hash)))return res.status(401).json({error:"Invalid credentials",message:"Staff ID or password is incorrect."});const safe={id:u.id,username:u.username,role:u.role,name:u.name};res.json({token:createSessionToken(safe),user:safe})}catch(e){next(e)}});
 app.post("/api/profile/password",requireAuth,async(req,res,next)=>{try{const current=String(req.body?.currentPassword||""),nextPw=String(req.body?.newPassword||"");if(nextPw.length<8)return res.status(400).json({error:"Invalid password",message:"New password must be at least 8 characters."});const q=await pool.query("SELECT password_hash FROM users WHERE id=$1 AND active=true",[req.user.id]);if(!q.rows[0]||!(await bcrypt.compare(current,q.rows[0].password_hash)))return res.status(401).json({error:"Invalid credentials",message:"Current password is incorrect."});await pool.query("UPDATE users SET password_hash=$1,updated_at=NOW() WHERE id=$2",[await bcrypt.hash(nextPw,12),req.user.id]);res.json({ok:true})}catch(e){next(e)}});
 app.post("/api/logout",requireAuth,(_req,res)=>res.json({ok:true}));
 app.get("/api/customers",requireAuth,async(req,res,next)=>{try{const q=await pool.query("SELECT * FROM customers ORDER BY name");res.json({customers:q.rows})}catch(e){next(e)}});
@@ -156,5 +167,5 @@ app.get("/api/leaves",requireAuth,adminOnly,async(req,res,next)=>{try{const q=aw
 app.post("/api/leaves",requireAuth,adminOnly,async(req,res,next)=>{try{const q=await pool.query("INSERT INTO leaves(user_id,leave_date,reason) VALUES($1,$2,$3) ON CONFLICT(user_id,leave_date) DO UPDATE SET reason=EXCLUDED.reason RETURNING *",[req.body.userId,req.body.leaveDate,req.body.reason||null]);res.status(201).json({leave:q.rows[0]})}catch(e){next(e)}});
 app.delete("/api/leaves/:id",requireAuth,adminOnly,async(req,res,next)=>{try{await pool.query("DELETE FROM leaves WHERE id=$1",[req.params.id]);res.json({ok:true})}catch(e){next(e)}});
 app.get("/api/health",async(_req,res)=>{const h={status:"ok",service:"tiffin-delivery-system",database:"not_configured"};if(pool){try{await pool.query("SELECT 1");h.database="connected"}catch{h.status="degraded";h.database="error"}}res.status(h.status==="ok"?200:503).json(h)});
-app.use((_req,res)=>res.status(404).json({error:"Not Found",message:"The requested resource was not found."}));app.use((err,_req,res,_next)=>{console.error(err);res.status(500).json({error:"Internal Server Error",message:"Something went wrong on the server."})});
+app.use((req,res)=>{if(req.path.startsWith("/api/"))return res.status(404).json({error:"Not Found",message:"The requested resource was not found."});res.status(404).sendFile("404.html",{root:"public"});});app.use((err,_req,res,_next)=>{console.error(err);res.status(500).json({error:"Internal Server Error",message:"Something went wrong on the server."})});
 async function start(){try{await migrate();app.listen(port,()=>console.log("Tiffin Delivery System running on port "+port))}catch(e){console.error("Startup failed:",e);process.exit(1)}}start();
