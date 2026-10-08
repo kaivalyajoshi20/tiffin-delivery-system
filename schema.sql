@@ -1,6 +1,6 @@
 -- Production V1 database schema
 CREATE TABLE IF NOT EXISTS users (
-  id BIGSERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('admin','driver')),
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS customers (
-  id BIGSERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   customer_code TEXT UNIQUE NOT NULL,
   name TEXT NOT NULL,
   phone TEXT,
@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS customers (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS recurring_deliveries (
-  id BIGSERIAL PRIMARY KEY,
-  customer_id BIGINT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-  driver_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  driver_id UUID REFERENCES users(id) ON DELETE SET NULL,
   meal_type TEXT NOT NULL DEFAULT 'Lunch',
   delivery_time TIME,
   days_of_week SMALLINT[] NOT NULL DEFAULT ARRAY[1,2,3,4,5,6],
@@ -42,11 +42,11 @@ CREATE TABLE IF NOT EXISTS recurring_deliveries (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS deliveries (
-  id BIGSERIAL PRIMARY KEY,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   delivery_code TEXT UNIQUE NOT NULL,
-  customer_id BIGINT NOT NULL REFERENCES customers(id),
-  driver_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
-  recurring_delivery_id BIGINT REFERENCES recurring_deliveries(id) ON DELETE SET NULL,
+  customer_id UUID NOT NULL REFERENCES customers(id),
+  driver_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  recurring_delivery_id UUID REFERENCES recurring_deliveries(id) ON DELETE SET NULL,
   delivery_date DATE NOT NULL,
   planned_time TIME,
   meal_type TEXT NOT NULL DEFAULT 'Lunch',
@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS deliveries (
   UNIQUE(customer_id, delivery_date, meal_type)
 );
 CREATE TABLE IF NOT EXISTS leaves (
-  id BIGSERIAL PRIMARY KEY,
-  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   leave_date DATE NOT NULL,
   reason TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
