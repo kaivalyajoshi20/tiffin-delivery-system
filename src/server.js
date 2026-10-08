@@ -26,7 +26,7 @@ const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATAB
 const SESSION_SECRET=process.env.SESSION_SECRET||"change-this-in-production";
 function createSessionToken(user){const payload=Buffer.from(JSON.stringify({...user,exp:Date.now()+12*60*60*1000})).toString("base64url");const sig=crypto.createHmac("sha256",SESSION_SECRET).update(payload).digest("base64url");return payload+"."+sig}
 function readSessionToken(token){if(!token)return null;const p=token.split(".");if(p.length!==2)return null;const [payload,sig]=p,expected=crypto.createHmac("sha256",SESSION_SECRET).update(payload).digest("base64url");if(sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected)))return null;try{const s=JSON.parse(Buffer.from(payload,"base64url").toString());return s.exp>Date.now()?s:null}catch{return null}}
-function requireAuth(req,res,next){const s=readSessionToken(req.headers.authorization?.replace(/^Bearer\\s+/i,""));if(!s)return res.status(401).json({error:"Unauthorized",message:"Please sign in again."});req.user=s;next()}
+function requireAuth(req,res,next){const s=readSessionToken(req.headers.authorization?.replace(/^Bearer\s+/i,""));if(!s)return res.status(401).json({error:"Unauthorized",message:"Please sign in again."});req.user=s;next()}
 function adminOnly(req,res,next){if(req.user?.role!=="admin")return res.status(403).json({error:"Forbidden",message:"Admin access required."});next()}
 async function migrate(){if(!pool)return;await pool.query(`-- Production V1 database schema
 CREATE TABLE IF NOT EXISTS users (
