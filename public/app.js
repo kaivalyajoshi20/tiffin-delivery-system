@@ -1,3 +1,4 @@
+function $(s,r=document){return r.querySelector(s)}
 const esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let S={token:sessionStorage.getItem("t")||"",user:null,page:"dashboard",customers:[],staff:[],deliveries:[],recurring:[]};
 const app=$("#app");
