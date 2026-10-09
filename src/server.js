@@ -22,8 +22,9 @@ const ALLOWED_ORIGINS=new Set(["https://instant-wjihasssodpr-angadphuket345-140e
 app.use((req,res,next)=>{const origin=req.headers.origin;if(origin&&ALLOWED_ORIGINS.has(origin)){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Headers","Content-Type, Authorization");res.setHeader("Access-Control-Allow-Methods","GET,POST,PATCH,DELETE,OPTIONS")}if(req.method==="OPTIONS")return res.sendStatus(204);next()});
 app.use(express.json({limit:"12mb"}));
 app.use(express.static("public",{setHeaders:(res,path)=>{if(path.endsWith(".html"))res.setHeader("Cache-Control","no-cache");else res.setHeader("Cache-Control","public,max-age=86400")}}));
-const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}}):null;
-const SESSION_SECRET=process.env.SESSION_SECRET||"change-this-in-production";
+const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL_MODE==="disable"?false:(process.env.PGSSL_CA?{ca:process.env.PGSSL_CA,rejectUnauthorized:true}:process.env.NODE_ENV==="production"?{rejectUnauthorized:true}:undefined)}):null;
+const SESSION_SECRET=process.env.SESSION_SECRET;
+if(!SESSION_SECRET || SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET must be configured with at least 32 characters.");
 function createSessionToken(user){const payload=Buffer.from(JSON.stringify({...user,exp:Date.now()+12*60*60*1000})).toString("base64url");const sig=crypto.createHmac("sha256",SESSION_SECRET).update(payload).digest("base64url");return payload+"."+sig}
 function readSessionToken(token){if(!token)return null;const p=token.split(".");if(p.length!==2)return null;const [payload,sig]=p,expected=crypto.createHmac("sha256",SESSION_SECRET).update(payload).digest("base64url");if(sig.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(expected)))return null;try{const s=JSON.parse(Buffer.from(payload,"base64url").toString());return s.exp>Date.now()?s:null}catch{return null}}
 function requireAuth(req,res,next){const s=readSessionToken(req.headers.authorization?.replace(/^Bearer\s+/i,""));if(!s)return res.status(401).json({error:"Unauthorized",message:"Please sign in again."});req.user=s;next()}
@@ -122,7 +123,7 @@ CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
   await pool.query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch'`);
   await pool.query(`ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_customer_id_delivery_date_key`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS deliveries_customer_date_meal_key ON deliveries(customer_id, delivery_date, meal_type)`);
-  const hash=await bcrypt.hash("demo123",10);if(process.env.DEMO_SEED==="true"){await pool.query("INSERT INTO users(username,password_hash,role,name) VALUES('admin',$1,'admin','Admin') ON CONFLICT(username) DO NOTHING",[hash]);await pool.query("INSERT INTO users(username,password_hash,role,name) VALUES('driver',$1,'driver','Rahul') ON CONFLICT(username) DO NOTHING",[hash]);}}
+}
 function dayNumber(d){return ((d.getUTCDay()+6)%7)+1}
 async function generateDailyDeliveries(date=new Date().toISOString().slice(0,10)){if(!pool)return{created:0};const result=await pool.query(`INSERT INTO deliveries(delivery_code,customer_id,driver_id,recurring_delivery_id,delivery_date,planned_time,meal_type,status)
 SELECT 'DEL-'||upper(substr(md5(r.id::text||':'||$1),1,8)),r.customer_id,r.driver_id,r.id,$1::date,r.delivery_time,r.meal_type,'Pending'
