@@ -245,3 +245,38 @@ td{border-bottom:1px solid #e8dcc1}
 .toast{border:1px solid #f3c52f}
 @media(max-width:800px){.main:before{right:-120px;top:120px;width:180px;height:180px}.main:after{left:auto;right:-90px;bottom:-50px;width:140px;height:140px}.sidebar:after{content:"";display:block;height:3px;margin-top:8px;background:repeating-linear-gradient(90deg,#f3c52f 0 3px,transparent 3px 7px,#e6007e 7px 9px,transparent 9px 14px)}}
 @media(prefers-reduced-motion:reduce){.main:before,.main:after{animation:none}}
+
+/* Dabba Dope ornamental system: inspired by the supplied brochure's rangoli, gold filigree and royal tiffin motifs */
+:root{--dd-teal:#103e37;--dd-gold:#e7b92f;--dd-pink:#e60087;--dd-royal:#123fbd;--dd-cream:#fff8e8}
+.topbar{position:sticky;isolation:isolate}
+.topbar:after{content:"";position:absolute;z-index:-1;left:0;right:0;bottom:-4px;height:4px;background:repeating-linear-gradient(90deg,#d9a51d 0 5px,transparent 5px 9px,#103e37 9px 12px,transparent 12px 17px);opacity:.65}
+.login{position:relative;isolation:isolate;overflow:hidden}
+.login:before,.login:after{content:"";position:fixed;width:180px;height:180px;pointer-events:none;opacity:.45;border:2px solid #e7b92f;border-radius:48% 52% 45% 55%;background:repeating-conic-gradient(from 0deg,transparent 0deg 9deg,#e7b92f 10deg 11deg,transparent 12deg 20deg);mask-image:radial-gradient(circle,transparent 0 22%,#000 23% 25%,transparent 26% 31%,#000 32% 34%,transparent 35% 41%,#000 42% 44%,transparent 45%)}
+.login:before{left:-85px;top:5%;transform:rotate(15deg)}
+.login:after{right:-85px;bottom:3%;transform:rotate(35deg)}
+.login-card{position:relative;overflow:hidden;border-radius:24px}
+.login-card:before{content:"";display:block;height:8px;margin:-30px -30px 24px;background:repeating-linear-gradient(90deg,#e7b92f 0 3px,transparent 3px 7px,#e60087 7px 9px,transparent 9px 13px)}
+.login-card:after{content:"EVERY DABBA • A ROYAL EXPERIENCE";display:block;text-align:center;margin-top:18px;padding-top:12px;border-top:1px solid #e6d5ad;color:#9c6a0c;font-family:Georgia,serif;font-size:11px;letter-spacing:.12em}
+.sidebar{position:relative;overflow:hidden}
+.sidebar:after{content:"";position:absolute;bottom:12px;right:-34px;width:120px;height:120px;border:1px solid rgba(231,185,47,.35);border-radius:50%;background:repeating-conic-gradient(from 0deg,transparent 0 8deg,rgba(231,185,47,.55) 9deg 10deg,transparent 11deg 18deg);mask-image:radial-gradient(circle,transparent 0 20%,#000 21% 23%,transparent 24% 31%,#000 32% 34%,transparent 35% 43%,#000 44% 46%,transparent 47%);pointer-events:none}
+.sidebar:before{position:relative;z-index:1;padding-bottom:18px}
+.main{position:relative}
+.main:before{content:"";position:absolute;top:18px;right:24px;width:92px;height:92px;pointer-events:none;opacity:.16;border-radius:50%;background:repeating-conic-gradient(#b17a10 0 2deg,transparent 2deg 15deg);mask-image:radial-gradient(circle,transparent 0 17%,#000 18% 20%,transparent 21% 28%,#000 29% 31%,transparent 32% 43%,#000 44% 46%,transparent 47%)}
+.section-head{position:relative}
+.section-head h2:before{content:"✦";color:#d89b19;font-size:.82em;margin-right:8px}
+.card,.table-wrap{position:relative}
+.grid .card{border-radius:18px 18px 18px 7px}
+.grid .card:before{content:"";position:absolute;left:0;top:0;width:52px;height:52px;border-top:2px solid rgba(216,138,24,.55);border-left:2px solid rgba(216,138,24,.55);border-radius:16px 0 0 0;pointer-events:none}
+.table-wrap{border-radius:18px 7px 18px 7px}
+.table-wrap:before,.table-wrap:after{content:"";position:absolute;width:26px;height:26px;border-color:#d8a52c;border-style:solid;pointer-events:none;z-index:1;opacity:.7}
+.table-wrap:before{top:0;left:0;border-width:2px 0 0 2px;border-radius:10px 0 0}
+.table-wrap:after{bottom:0;right:0;border-width:0 2px 2px 0;border-radius:0 0 10px}
+.metric{font-variant-numeric:tabular-nums}
+.status{border:1px solid rgba(16,62,55,.08)}
+.btn-primary{border:1px solid rgba(255,248,232,.35)}
+.map-demo{border:2px solid #dfc67f;background-color:#fff8e8}
+.map-demo:after{content:"";position:absolute;inset:7px;border:1px solid rgba(177,122,16,.28);border-radius:10px;pointer-events:none}
+.not-found{background:radial-gradient(circle at center,rgba(231,185,47,.13),transparent 45%),#f7f0e2}
+.not-found:before{content:"";position:absolute;width:240px;height:240px;border:2px solid #d7a51c;border-radius:50%;background:repeating-conic-gradient(transparent 0deg 8deg,rgba(215,165,28,.3) 9deg 10deg,transparent 11deg 18deg);mask-image:radial-gradient(circle,transparent 0 18%,#000 19% 21%,transparent 22% 30%,#000 31% 33%,transparent 34% 42%,#000 43% 45%,transparent 46%);pointer-events:none}
+@media(max-width:800px){.main:before{width:54px;height:54px;right:12px;top:12px;opacity:.12}.sidebar:after{display:none}.login:before,.login:after{width:115px;height:115px}}
+@media(prefers-reduced-motion:reduce){.login-card:after{animation:none}}
