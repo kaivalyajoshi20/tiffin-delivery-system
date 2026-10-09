@@ -165,3 +165,45 @@ input:focus,textarea:focus,select:focus{border-color:#c88719;box-shadow:0 0 0 4p
 .toast{background:#103e37;color:#fffaf0}
 @media(max-width:800px){.sidebar{background:#103e37}}
 @media(prefers-reduced-motion:reduce){.grid .card:hover,.nav button:hover,.btn:hover{transform:none}}
+
+/* DABBA DOPE — original traditional Indian logistics-inspired interface */
+:root{--ink:#173b35;--muted:#6b7769;--line:#e8d9b8;--surface:#fffaf0;--soft:#f6ecd6;--brand:#d88a18;--brand-dark:#9c5d0c;--navy:#103e37;--saffron:#d88a18;--maroon:#7b2934}
+html{scroll-behavior:smooth}
+body{background:#f7f0e2;color:#173b35}
+.topbar{background:rgba(255,250,240,.94);backdrop-filter:blur(14px);border-bottom:1px solid #e7d6b2}
+.brand{font-size:0!important;display:flex;align-items:center;gap:10px;letter-spacing:0!important}
+.brand:before{content:"";width:34px;height:34px;flex:0 0 34px;border-radius:11px;background:linear-gradient(145deg,#e9a52b,#c87914);box-shadow:inset 0 0 0 2px rgba(255,250,240,.55),0 4px 12px #a8661926}
+.brand:after{content:"DABBA DOPE";font-size:18px;font-weight:900;letter-spacing:.045em;color:#103e37}
+.brand span{display:none}
+.login-card>.brand{margin-bottom:20px}
+.sidebar{background:linear-gradient(180deg,#103e37,#0b302b 80%,#172f28);border-right:1px solid #244e42}
+.sidebar:before{content:"DABBA DOPE  /  OPERATIONS";color:#e9c56d;letter-spacing:.11em}
+.nav button{transition:transform .22s cubic-bezier(.2,.7,.2,1),background .22s,color .22s}
+.nav button.active{background:linear-gradient(110deg,#edb53f,#cf8518);color:#183b32}
+.main{animation:pageRise .42s cubic-bezier(.2,.7,.2,1) both}
+h1{letter-spacing:-.035em}
+.page-kicker{color:#a86712}
+.card,.table-wrap{border-color:#e8dcc1;background:#fffdf7;box-shadow:0 9px 28px rgba(68,58,34,.055)}
+.grid .card{position:relative;overflow:hidden;animation:cardRise .45s both}
+.grid .card:nth-child(2){animation-delay:.05s}.grid .card:nth-child(3){animation-delay:.1s}.grid .card:nth-child(4){animation-delay:.15s}
+.grid .card:after{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#d88a18,#f0c86b,#103e37);opacity:.8}
+.grid .card:hover{transform:translateY(-4px);box-shadow:0 17px 35px rgba(68,58,34,.11)}
+.metric{color:#103e37}
+.metric-label{letter-spacing:.09em;color:#69776b}
+.btn-primary{background:linear-gradient(120deg,#d9901c,#bd7110);box-shadow:0 7px 17px rgba(176,105,13,.18)}
+.btn-primary:hover{filter:saturate(1.08);transform:translateY(-2px)}
+.btn-secondary{background:#f7edda;color:#31584b;border-color:#e7d5ae}
+input:focus,textarea:focus,select:focus{border-color:#c88719;box-shadow:0 0 0 4px rgba(216,138,24,.15)}
+.status{letter-spacing:.01em}
+.status.delivered{background:#e1efdf;color:#205c37}.status.pending{background:#fff0c5;color:#7a4b00}.status.planned{background:#dcebe3;color:#174e40}
+.table-wrap{animation:cardRise .35s both}
+tbody tr{transition:background .18s ease}
+tbody tr:hover{background:#fff6e4}
+.login{background:radial-gradient(circle at 18% 15%,rgba(231,174,52,.2),transparent 30%),radial-gradient(circle at 85% 80%,rgba(216,138,24,.13),transparent 28%),linear-gradient(135deg,#103e37,#092d28)}
+.login-card{animation:loginIn .55s cubic-bezier(.2,.7,.2,1) both;background:#fffaf0;border:1px solid rgba(228,190,108,.45)}
+.toast{background:#103e37;color:#fffaf0;animation:toastIn .22s ease both}
+@keyframes pageRise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cardRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes loginIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:800px){.brand:before{width:29px;height:29px;flex-basis:29px}.brand:after{font-size:15px}.main{animation-duration:.3s}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.main,.grid .card,.table-wrap,.login-card{animation:none!important}.nav button,.grid .card,.btn,tbody tr{transition:none!important}}
