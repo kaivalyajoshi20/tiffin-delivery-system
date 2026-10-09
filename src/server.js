@@ -3,11 +3,33 @@ import express from "express";
 import pg from "pg";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
+import helmet from "helmet";
 
 const { Pool } = pg;
 const app = express();
 const port = Number(process.env.PORT || 3000);
 app.disable("x-powered-by"); app.set("trust proxy", 1);
+const isProduction = process.env.NODE_ENV === "production";
+app.use(helmet({
+  contentSecurityPolicy: {
+    reportOnly: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      scriptSrcAttr: ["'none'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: isProduction ? [] : null
+    }
+  },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" }
+}));
 if(process.env.NODE_ENV==="production" && !process.env.SESSION_SECRET) throw new Error("SESSION_SECRET is required in production");
 app.use((req,res,next)=>{
   if(process.env.NODE_ENV==="production" && req.headers["x-forwarded-proto"]!=="https") return res.redirect(308,"https://"+req.get("host")+req.originalUrl);
