@@ -21,13 +21,13 @@ android {
             dimension "role"
             applicationIdSuffix ".admin"
             versionNameSuffix "-admin"
-            resValue "string", "app_name", "Tiffin Services Admin"
+            resValue "string", "app_name", "Dabba Dope Admin"
         }
         driver {
             dimension "role"
             applicationIdSuffix ".driver"
             versionNameSuffix "-driver"
-            resValue "string", "app_name", "Tiffin Services Delivery"
+            resValue "string", "app_name", "Dabba Dope Delivery"
         }
     }
 }
