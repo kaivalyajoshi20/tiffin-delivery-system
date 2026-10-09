@@ -104,3 +104,64 @@ input:focus,textarea:focus,select:focus{border-color:#1593b8;box-shadow:0 0 0 4p
 @media(max-width:520px){.main{padding:18px 12px}.grid{gap:10px}.card{padding:15px;border-radius:15px}.metric{font-size:27px}.section{margin-top:22px}.table-wrap{border-radius:15px}.section-head{align-items:flex-start;flex-wrap:wrap}.section-head .btn{width:auto}.workflow-modal{border-radius:18px}.workflow-modal .section-head{align-items:center}.workflow-modal .section-head .btn{width:auto}}
 
 .location-tools{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}.location-tools .btn{flex:1;min-width:130px}.location-preview{display:flex;align-items:center;gap:10px;margin-top:10px;padding:12px;border:1px solid #dbe4ec;border-radius:12px;background:#f8fafc}.location-preview span:nth-child(2){flex:1;font-size:13px;color:#475569;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.location-preview .btn{white-space:nowrap}.location-preview button:disabled{opacity:.45}@media(max-width:520px){.location-preview{flex-wrap:wrap}.location-preview span:nth-child(2){min-width:calc(100% - 35px)}.location-preview .btn{flex:1}}
+
+
+/* Traditional Indian tiffin identity — inspired by the supplied flyer */
+:root{
+  --ink:#173b35;
+  --muted:#64766d;
+  --line:#e8dcc1;
+  --surface:#fffdf7;
+  --soft:#f8f0df;
+  --brand:#d88a18;
+  --brand-dark:#9c5d0c;
+  --navy:#103e37;
+}
+body{background:#f7f0e2;color:#173b35}
+.topbar{background:#fffaf0;color:#173b35;border-bottom:1px solid #e6d5ad;box-shadow:0 4px 18px rgba(43,54,32,.07)}
+.topbar .brand{color:#103e37;letter-spacing:-.02em}
+.topbar .brand span{color:#d88a18}
+.topbar .user{color:#31584b;background:#f7edda;border-color:#e8d6ae}
+.sidebar{background:linear-gradient(180deg,#103e37 0%,#0b302b 100%);box-shadow:8px 0 28px rgba(16,62,55,.10)}
+.sidebar:before{color:#e9c56d}
+.nav button{color:#e3e7d8}
+.nav button:hover{background:rgba(255,190,61,.12);color:#fff3cf}
+.nav button.active{background:linear-gradient(100deg,#e5a52b,#c77c14);color:#183b32;box-shadow:0 8px 20px rgba(205,139,24,.22)}
+.main{background:radial-gradient(ellipse at top right,rgba(226,178,69,.09),transparent 36%)}
+.page-kicker{color:#a86712}
+h1,h2{color:#173b35}
+.grid .card,.card,.table-wrap{background:#fffdf7;border-color:#e8dcc1;box-shadow:0 8px 26px rgba(68,58,34,.045)}
+.grid .card:hover{box-shadow:0 14px 34px rgba(68,58,34,.09)}
+.metric{color:#103e37}
+.metric-label{color:#64766d}
+th{background:#f8f0df;color:#6c7568;border-bottom-color:#e8dcc1}
+td{color:#354d43;border-bottom-color:#f0e6d2}
+tbody tr:hover{background:#fff8e9}
+.btn-primary{background:linear-gradient(135deg,#d9901c,#bd7110);color:#fffdf7;box-shadow:0 6px 16px rgba(176,105,13,.18)}
+.btn-primary:hover{background:linear-gradient(135deg,#c77b12,#9c5d0c);box-shadow:0 9px 22px rgba(176,105,13,.24)}
+.btn-secondary{background:#f7edda;color:#31584b;border-color:#e7d5ae}
+input,textarea,select{border-color:#ddcfb3;background:#fffefa;color:#173b35}
+input:focus,textarea:focus,select:focus{border-color:#c88719;box-shadow:0 0 0 4px rgba(216,138,24,.15)}
+.login{background:radial-gradient(circle at 18% 15%,rgba(231,174,52,.20),transparent 30%),linear-gradient(135deg,#103e37,#092d28)}
+.login-card{background:#fffaf0;border:1px solid rgba(228,190,108,.45);box-shadow:0 24px 70px rgba(4,28,24,.32)}
+.login-card h1,.login-card h2{color:#103e37}
+.login-footer a,.legal-page a{color:#9c5d0c}
+.cta-note{background:#f8edcf;color:#6e4a0a;border:1px solid #ead49b}
+.legal-page{background:#fffaf0;color:#173b35}
+.legal-page p{color:#40584c}
+.not-found-code{color:#103e37}
+.cookie-banner{background:#fffaf0;border-color:#e5d2a9}
+.cookie-banner p{color:#40584c}
+.empty{background:#fffdf7;border-color:#d8c69d;color:#64766d}
+.map-demo{background:linear-gradient(135deg,#f1e7cf,#fffaf0);border-color:#e0d0ad}
+.map-grid{background-image:linear-gradient(25deg,transparent 48%,rgba(88,111,80,.18) 49%,transparent 51%),linear-gradient(115deg,transparent 48%,rgba(88,111,80,.15) 49%,transparent 51%)}
+.route-line{background:#d88a18}
+.pin{background:#103e37;border:2px solid #fff4d5}
+.map-label{background:#fffaf0;color:#173b35}
+.location-preview{border-color:#e8dcc1;background:#fbf5e7}
+.status.delivered{background:#e1efdf;color:#205c37}
+.status.pending{background:#fff0c5;color:#7a4b00}
+.status.planned{background:#dcebe3;color:#174e40}
+.toast{background:#103e37;color:#fffaf0}
+@media(max-width:800px){.sidebar{background:#103e37}}
+@media(prefers-reduced-motion:reduce){.grid .card:hover,.nav button:hover,.btn:hover{transform:none}}
