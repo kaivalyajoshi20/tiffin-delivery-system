@@ -33,3 +33,29 @@ test("unsafe API request without CSRF token is rejected", async () => {
   });
   assert.equal(response.status, 403);
 });
+
+test("CSRF bootstrap returns a non-cacheable token and secure session cookie", async () => {
+  const response = await fetch(base + "/api/csrf", { signal: AbortSignal.timeout(15000) });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const body = await response.json();
+  assert.ok(typeof body.csrfToken === "string" && body.csrfToken.length >= 32);
+  const cookie = response.headers.get("set-cookie") || "";
+  assert.match(cookie, /HttpOnly/i);
+  assert.match(cookie, /SameSite=Lax/i);
+  assert.match(cookie, /Secure/i);
+});
+
+test("malformed JSON receives a client error rather than a server error", async () => {
+  const response = await fetch(base + "/api/login", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{",
+    redirect: "manual",
+    signal: AbortSignal.timeout(15000)
+  });
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.equal(body.error, "Bad Request");
+  assert.ok(body.requestId);
+});
