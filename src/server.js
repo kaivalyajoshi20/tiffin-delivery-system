@@ -168,6 +168,7 @@ CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
   await pool.query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch'`);
   await pool.query(`ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_customer_id_delivery_date_key`);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS deliveries_customer_date_meal_key ON deliveries(customer_id, delivery_date, meal_type)`);
+  await pool.query("DELETE FROM rate_limit_buckets WHERE window_started < NOW() - INTERVAL '1 day'");
 }
 function dayNumber(d){return ((d.getUTCDay()+6)%7)+1}
 async function generateDailyDeliveries(date=new Date().toISOString().slice(0,10)){if(!pool)return{created:0};const result=await pool.query(`INSERT INTO deliveries(delivery_code,customer_id,driver_id,recurring_delivery_id,delivery_date,planned_time,meal_type,status)
