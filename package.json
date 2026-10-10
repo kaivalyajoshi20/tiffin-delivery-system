@@ -18,6 +18,8 @@
     "express": "^5.1.0",
     "pg": "^8.16.3",
     "bcryptjs": "^2.4.3",
-    "helmet": "^8.1.0"
+    "helmet": "^8.1.0",
+    "express-session": "^1.18.2",
+    "connect-pg-simple": "^10.0.0"
   }
 }
