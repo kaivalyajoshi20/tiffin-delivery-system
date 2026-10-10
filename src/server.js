@@ -58,7 +58,7 @@ function rateLimit({windowMs=60000,max=120,keyPrefix="global"}={}){return async(
 }catch(e){next(e)}}}
 const ALLOWED_ORIGINS=new Set(["https://instant-wjihasssodpr-angadphuket345-140e.wix-site-host.com","http://localhost:3000","http://localhost:5173"]);
 app.use((req,res,next)=>{const origin=req.headers.origin;if(origin&&ALLOWED_ORIGINS.has(origin)){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Headers","Content-Type, X-CSRF-Token");res.setHeader("Access-Control-Allow-Methods","GET,POST,PATCH,DELETE,OPTIONS")}if(req.method==="OPTIONS")return res.sendStatus(204);next()});
-app.use(express.json({limit:"12mb"}));
+app.use(express.json({limit:"8mb", strict:true, type:["application/json","application/*+json"]}));
 app.use(express.static("public",{setHeaders:(res,path)=>{if(path.endsWith(".html"))res.setHeader("Cache-Control","no-cache");else res.setHeader("Cache-Control","public,max-age=86400")}}));
 const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL_MODE==="disable"?false:(process.env.PGSSL_CA?{ca:process.env.PGSSL_CA,rejectUnauthorized:true}:process.env.NODE_ENV==="production"?{rejectUnauthorized:true}:undefined)}):null;
 const SESSION_SECRET=process.env.SESSION_SECRET;
