@@ -183,41 +183,6 @@ CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS deliveries_customer_date_meal_key ON deliveries(customer_id, delivery_date, meal_type)`);
   await pool.query("DELETE FROM rate_limit_buckets WHERE window_started < NOW() - INTERVAL '1 day'");
 }
-async function seedDemoAccounts(){
-  if(process.env.DEMO_ACCOUNTS_ENABLED!=="true") return;
-  const accounts=[
-    {key:"admin",username:process.env.DEMO_ADMIN_USERNAME,password:process.env.DEMO_ADMIN_PASSWORD,role:"admin",name:process.env.DEMO_ADMIN_NAME||"Demo Manager"},
-    {key:"driver",username:process.env.DEMO_DRIVER_USERNAME,password:process.env.DEMO_DRIVER_PASSWORD,role:"driver",name:process.env.DEMO_DRIVER_NAME||"Demo Driver"}
-  ];
-  for(const account of accounts){
-    if(typeof account.username!=="string"||!/^[a-z0-9._-]{3,80}$/.test(account.username)||
-       typeof account.password!=="string"||account.password.length<12||account.password.length>200||
-       typeof account.name!=="string"||!account.name.trim()||account.name.length>120){
-      throw new Error("Demo account configuration is incomplete or invalid. Set valid demo usernames and passwords (12–200 characters).");
-    }
-  }
-  if(accounts[0].username===accounts[1].username) throw new Error("Demo admin and driver usernames must be different.");
-  for(const account of accounts){
-    const existing=await pool.query("SELECT id,role FROM users WHERE username=$1 LIMIT 1",[account.username]);
-    if(existing.rows[0]){
-      if(existing.rows[0].role!==account.role) throw new Error("Configured demo username already exists with a different role: "+account.username);
-      console.log("Demo account already exists; leaving its password and profile unchanged:",account.username);
-      continue;
-    }
-    const passwordHash=await bcrypt.hash(account.password,12);
-    const inserted=await pool.query(
-      "INSERT INTO users(username,password_hash,role,name,active,on_duty) VALUES($1,$2,$3,$4,TRUE,FALSE) ON CONFLICT(username) DO NOTHING RETURNING id",
-      [account.username,passwordHash,account.role,account.name.trim()]
-    );
-    if(!inserted.rows[0]){
-      const raced=await pool.query("SELECT role FROM users WHERE username=$1 LIMIT 1",[account.username]);
-      if(raced.rows[0]?.role!==account.role) throw new Error("Configured demo username was concurrently created with a different role: "+account.username);
-    }else{
-      console.log("Created configured demo account:",account.username,"role:",account.role);
-    }
-  }
-}
-
 app.get("/api/public-config",(_req,res)=>res.json({analyticsId:process.env.GA_MEASUREMENT_ID||""}));
 
 async function sendResetEmail(to,subject,text){if(!process.env.RESEND_API_KEY||!process.env.RESET_EMAIL_FROM)throw new Error("Email reset provider is not configured");const r=await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+process.env.RESEND_API_KEY,"Content-Type":"application/json"},body:JSON.stringify({from:process.env.RESET_EMAIL_FROM,to:[to],subject,text})});if(!r.ok)throw new Error("Email provider rejected the message")}
@@ -255,4 +220,4 @@ app.delete("/api/leaves/:id",requireAuth,adminOnly,async(req,res,next)=>{try{awa
 app.get("/api/health",async(_req,res)=>{const h={status:"ok",service:"tiffin-delivery-system",database:"not_configured"};if(pool){try{await pool.query("SELECT 1");h.database="connected"}catch{h.status="degraded";h.database="error"}}res.status(h.status==="ok"?200:503).json(h)});
 app.use((req,res)=>{if(req.path.startsWith("/api/"))return res.status(404).json({error:"Not Found",message:"The requested resource was not found."});res.status(404).sendFile("404.html",{root:"public"});});
 app.use((err,req,res,_next)=>{const status=Number.isInteger(err?.status)&&err.status>=400&&err.status<500?err.status:500;const requestId=crypto.randomUUID();if(status>=500)console.error("Request failed",{requestId,method:req.method,path:req.path,error:err?.message});if(res.headersSent)return;const message=status===413?"Request body is too large.":status===400?"Invalid request body.":"Something went wrong on the server.";res.status(status).json({error:status===500?"Internal Server Error":status===413?"Payload Too Large":"Bad Request",message,requestId})});
-async function start(){try{await migrate();await seedDemoAccounts();app.listen(port,()=>console.log("Tiffin Delivery System running on port "+port))}catch(e){console.error("Startup failed:",e);process.exit(1)}}start();
+async function start(){try{await migrate();app.listen(port,()=>console.log("Tiffin Delivery System running on port "+port))}catch(e){console.error("Startup failed:",e);process.exit(1)}}start();
