@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>Initial Admin Setup</title>
+<style>
+:root{color-scheme:light dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#101827;color:#eef2ff;padding:20px;box-sizing:border-box}.panel{width:min(100%,460px);background:#1b2638;border:1px solid #39465c;border-radius:16px;padding:26px;box-sizing:border-box}h1{font-size:1.45rem;margin:0 0 8px}p{color:#c3cede;line-height:1.5}label{display:block;font-size:.92rem;margin:16px 0 6px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #526078;border-radius:8px;background:#111a29;color:#fff;font:inherit}button{margin-top:20px;width:100%;padding:12px;border:0;border-radius:8px;background:#a7f3d0;color:#092b25;font-weight:700;font:inherit;cursor:pointer}button:disabled{opacity:.6}#status{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:16px}.warning{font-size:.9rem;color:#fbd38d}
+</style>
+</head>
+<body>
+<main class="panel">
+<h1>Create the first admin</h1>
+<p>This temporary setup page works only while the one-time setup secret is configured on the server and no admin account exists.</p>
+<p class="warning">After successful creation, remove INITIAL_ADMIN_SETUP_SECRET from Render immediately. Do not share this page or your credentials.</p>
+<form id="setup-form">
+<label for="setupSecret">One-time setup secret</label><input id="setupSecret" name="setupSecret" type="password" required minlength="32" autocomplete="off">
+<label for="username">Admin staff ID</label><input id="username" name="username" required minlength="2" maxlength="40" pattern="[A-Za-z0-9][A-Za-z0-9._-]{1,39}" autocomplete="username">
+<label for="name">Display name</label><input id="name" name="name" required maxlength="120" autocomplete="name">
+<label for="email">Recovery email (optional)</label><input id="email" name="email" type="email" maxlength="254" autocomplete="email">
+<label for="password">Admin password (minimum 16 characters)</label><input id="password" name="password" type="password" required minlength="16" maxlength="200" autocomplete="new-password">
+<button id="submit" type="submit">Create admin account</button>
+</form>
+<p id="status" role="status" aria-live="polite"></p>
+<script src="/initial-admin.js" defer></script>
+</main>
+</body>
+</html>
