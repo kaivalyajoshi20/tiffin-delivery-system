@@ -66,6 +66,7 @@ if(!SESSION_SECRET || SESSION_SECRET.length < 32) throw new Error("SESSION_SECRE
 if(isProduction && !pool) throw new Error("DATABASE_URL is required in production.");
 const PgSession=connectPgSimple(session);
 if(pool) app.use(session({name:"dd.sid",secret:SESSION_SECRET,store:new PgSession({pool,tableName:"user_sessions",createTableIfMissing:true,pruneSessionInterval:15*60}),resave:false,saveUninitialized:false,rolling:true,cookie:{httpOnly:true,secure:isProduction,sameSite:"lax",maxAge:8*60*60*1000,path:"/"}}));
+app.use("/api",rateLimit({windowMs:60000,max:180,keyPrefix:"api"}));
 function requireAuth(req,res,next){if(!req.session?.user)return res.status(401).json({error:"Unauthorized",message:"Please sign in again."});req.user=req.session.user;next()}
 const SAFE_METHODS=new Set(["GET","HEAD","OPTIONS"]);
 app.get("/api/csrf",(req,res)=>{if(!req.session)return res.status(503).json({error:"Database unavailable"});if(!req.session.csrfToken)req.session.csrfToken=crypto.randomBytes(32).toString("base64url");res.setHeader("Cache-Control","no-store");res.json({csrfToken:req.session.csrfToken})});
