@@ -180,6 +180,16 @@ CREATE INDEX IF NOT EXISTS idx_customers_active ON customers(active);
   await pool.query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS recurring_delivery_id UUID, ADD COLUMN IF NOT EXISTS route_order INTEGER, ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch', ADD COLUMN IF NOT EXISTS whatsapp_message_id TEXT`);
   await pool.query(`ALTER TABLE deliveries ADD COLUMN IF NOT EXISTS meal_type TEXT NOT NULL DEFAULT 'Lunch'`);
   await pool.query(`ALTER TABLE deliveries DROP CONSTRAINT IF EXISTS deliveries_customer_id_delivery_date_key`);
+  const duplicateDeliveries = await pool.query(`
+    SELECT customer_id, delivery_date, meal_type, COUNT(*)::int AS duplicate_count
+    FROM deliveries
+    GROUP BY customer_id, delivery_date, meal_type
+    HAVING COUNT(*) > 1
+    LIMIT 10
+  `);
+  if (duplicateDeliveries.rows.length) {
+    throw new Error("Migration blocked: duplicate deliveries exist for the same customer/date/meal. Back up the database, audit the duplicate rows, and repair them explicitly before deploying.");
+  }
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS deliveries_customer_date_meal_key ON deliveries(customer_id, delivery_date, meal_type)`);
   await pool.query("DELETE FROM rate_limit_buckets WHERE window_started < NOW() - INTERVAL '1 day'");
 }
