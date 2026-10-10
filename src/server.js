@@ -39,9 +39,23 @@ app.use((req,res,next)=>{
   if(process.env.NODE_ENV==="production") res.setHeader("Strict-Transport-Security","max-age=31536000; includeSubDomains");
   next()
 });
-const rateBuckets=new Map();
-function rateLimit({windowMs=60000,max=120,keyPrefix="global"}={}){return(req,res,next)=>{const key=keyPrefix+":"+req.ip,now=Date.now(),b=rateBuckets.get(key);if(!b||now-b.started>windowMs){rateBuckets.set(key,{started:now,count:1});return next()}b.count++;if(b.count>max)return res.status(429).json({error:"Too many requests",message:"Please wait a moment and try again."});next()}}
-app.use(rateLimit({windowMs:60000,max:180,keyPrefix:"all"}));
+const fallbackRateBuckets=new Map();
+function rateLimit({windowMs=60000,max=120,keyPrefix="global"}={}){return async(req,res,next)=>{try{
+  const key=keyPrefix+":"+req.ip;
+  if(pool){
+    const q=await pool.query(`INSERT INTO rate_limit_buckets(bucket_key,window_started,count) VALUES($1,NOW(),1)
+      ON CONFLICT(bucket_key) DO UPDATE SET
+      count=CASE WHEN rate_limit_buckets.window_started <= NOW() - ($2::bigint * INTERVAL '1 millisecond') THEN 1 ELSE rate_limit_buckets.count+1 END,
+      window_started=CASE WHEN rate_limit_buckets.window_started <= NOW() - ($2::bigint * INTERVAL '1 millisecond') THEN NOW() ELSE rate_limit_buckets.window_started END
+      RETURNING count`,[key,windowMs]);
+    if(Number(q.rows[0].count)>max)return res.status(429).json({error:"Too many requests",message:"Please wait a moment and try again."});
+    return next();
+  }
+  if(isProduction)return res.status(503).json({error:"Rate limiter unavailable"});
+  const now=Date.now(),b=fallbackRateBuckets.get(key);
+  if(!b||now-b.started>windowMs){fallbackRateBuckets.set(key,{started:now,count:1});return next()}
+  b.count++;if(b.count>max)return res.status(429).json({error:"Too many requests",message:"Please wait a moment and try again."});next()
+}catch(e){next(e)}}}
 const ALLOWED_ORIGINS=new Set(["https://instant-wjihasssodpr-angadphuket345-140e.wix-site-host.com","http://localhost:3000","http://localhost:5173"]);
 app.use((req,res,next)=>{const origin=req.headers.origin;if(origin&&ALLOWED_ORIGINS.has(origin)){res.setHeader("Access-Control-Allow-Origin",origin);res.setHeader("Vary","Origin");res.setHeader("Access-Control-Allow-Headers","Content-Type, X-CSRF-Token");res.setHeader("Access-Control-Allow-Methods","GET,POST,PATCH,DELETE,OPTIONS")}if(req.method==="OPTIONS")return res.sendStatus(204);next()});
 app.use(express.json({limit:"12mb"}));
@@ -49,6 +63,7 @@ app.use(express.static("public",{setHeaders:(res,path)=>{if(path.endsWith(".html
 const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:process.env.PGSSL_MODE==="disable"?false:(process.env.PGSSL_CA?{ca:process.env.PGSSL_CA,rejectUnauthorized:true}:process.env.NODE_ENV==="production"?{rejectUnauthorized:true}:undefined)}):null;
 const SESSION_SECRET=process.env.SESSION_SECRET;
 if(!SESSION_SECRET || SESSION_SECRET.length < 32) throw new Error("SESSION_SECRET must be configured with at least 32 characters.");
+if(isProduction && !pool) throw new Error("DATABASE_URL is required in production.");
 const PgSession=connectPgSimple(session);
 if(pool) app.use(session({name:"dd.sid",secret:SESSION_SECRET,store:new PgSession({pool,tableName:"user_sessions",createTableIfMissing:true,pruneSessionInterval:15*60}),resave:false,saveUninitialized:false,rolling:true,cookie:{httpOnly:true,secure:isProduction,sameSite:"lax",maxAge:8*60*60*1000,path:"/"}}));
 function requireAuth(req,res,next){if(!req.session?.user)return res.status(401).json({error:"Unauthorized",message:"Please sign in again."});req.user=req.session.user;next()}
@@ -56,7 +71,7 @@ const SAFE_METHODS=new Set(["GET","HEAD","OPTIONS"]);
 app.get("/api/csrf",(req,res)=>{if(!req.session)return res.status(503).json({error:"Database unavailable"});if(!req.session.csrfToken)req.session.csrfToken=crypto.randomBytes(32).toString("base64url");res.setHeader("Cache-Control","no-store");res.json({csrfToken:req.session.csrfToken})});
 app.use("/api",(req,res,next)=>{if(SAFE_METHODS.has(req.method)||req.path==="/csrf"||req.path==="/health"||req.path==="/public-config")return next();const sent=req.get("x-csrf-token"),expected=req.session?.csrfToken;if(!sent||!expected||sent.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(sent),Buffer.from(expected)))return res.status(403).json({error:"CSRF validation failed",message:"Refresh the page and try again."});next()});
 function adminOnly(req,res,next){if(req.user?.role!=="admin")return res.status(403).json({error:"Forbidden",message:"Admin access required."});next()}
-async function migrate(){if(!pool)return;await pool.query(`-- Production V1 database schema
+async function migrate(){if(!pool)return;await pool.query(`CREATE TABLE IF NOT EXISTS rate_limit_buckets (bucket_key TEXT PRIMARY KEY, window_started TIMESTAMPTZ NOT NULL, count INTEGER NOT NULL DEFAULT 0); CREATE INDEX IF NOT EXISTS idx_rate_limit_window ON rate_limit_buckets(window_started); -- Production V1 database schema
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
