@@ -323,3 +323,17 @@ button.is-loading{opacity:.72;pointer-events:none}
 .btn-danger{background:#fff1f0;color:#a32920;border:1px solid #ffd5d1}
 button:disabled{cursor:wait;opacity:.62;transform:none!important}
 @media(prefers-reduced-motion:reduce){#app-loading,.loading-spinner,.loading-track:after{animation:none;transition:none}}
+
+@media print {
+  body, .shell, .main { background:#fff !important; color:#111 !important; }
+  .sidebar, .topbar, .section-head button, [data-report-days], #printReport, #csvReport, .toast, #app-loading { display:none !important; }
+  .layout, .main { display:block !important; margin:0 !important; padding:0 !important; width:100% !important; }
+  #reportOutput { display:block !important; }
+  .table-wrap { overflow:visible !important; border:0 !important; box-shadow:none !important; }
+  table { width:100% !important; border-collapse:collapse !important; font-size:9pt !important; }
+  th, td { color:#111 !important; background:#fff !important; border:1px solid #bbb !important; padding:5px !important; }
+  th { font-weight:700 !important; }
+  h1 { font-size:18pt !important; }
+  a { color:#111 !important; text-decoration:none !important; }
+  tr { break-inside:avoid; }
+}
